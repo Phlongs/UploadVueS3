@@ -1,87 +1,117 @@
 <template>
-  <div>
-    <h1>Upload directly to AWS S3</h1>
-    <p v-html="marked(description)"></p>
-    <vue-dropzone ref="myVueDropzone" id="dropzone" v-on:vdropzone-sending="sendingEvent" :awss3="awss3" v-on:vdropzone-s3-upload-error="s3UploadError" v-on:vdropzone-s3-upload-success="s3UploadSuccess" :options="dropzoneOptions">
-    </vue-dropzone>
-    <hr>
-    <button @click="uploadFiles">Upload Files</button>
-  </div>
+  <form class="dropzone" id="my-dropzone">
+    <!-- Not displayed, just for Dropzone's `dictDefaultMessage` option -->
+    <div id="dropzone-message" style="display: none">
+      <h1>Upload Files</h1>
+      <span class="dropzone-title"><i class='fa fa-cloud-upload'></i> Drop files here or click to select</span>
+      <span class="dropzone-info">You can upload multiple files at once</span>
+    </div>
+  </form>
+
 </template>
 
 <script>
-import vue2Dropzone from 'vue2-dropzone'
-import 'vue2-dropzone/dist/vue2Dropzone.css'
+import Dropzone from 'dropzone'
+import '../../node_modules/dropzone/dist/dropzone.css'
+import lambda from '../lambda'
 
-var AWS = require('aws-sdk');
-var s3 = new AWS.S3({
-  signatureVersion: 'v4',
-});
-
-AWS.config.update({accessKeyId: '', secretAccessKey:
-''});
-
-AWS.config.region = 'us-east-2';
-
-  const url = s3.getSignedUrl('putObject', {
-    Bucket: '',
-    Key: '',
-    Expires: 10
-  });
-
-  console.log(url)
-
-
+Dropzone.autoDiscover = false
 
 export default {
-  data() {
+  name: 'dropzone',
+  mounted () {
+    const vm = this
 
+    let options = {
+      // The URL will be changed for each new file being processing
+      url: '/',
 
-    return {
+      // Since we're going to do a `PUT` upload to S3 directly
+      method: 'put',
 
-      signurl: '"' + url + '"',
-      dropzoneOptions: {
-        url: 'https://httpbin.org/post',
-        thumbnailWidth: 200,
-        addRemoveLinks: true,
-        autoProcessQueue: false
+      // Hijack the xhr.send since Dropzone always upload file by using formData
+      // ref: https://github.com/danialfarid/ng-file-upload/issues/743
+      sending (file, xhr) {
+        let _send = xhr.send
+        xhr.send = () => {
+          _send.call(xhr, file)
+        }
       },
-      awss3: {
-        signingURL: ''
+
+      // Upload one file at a time since we're using the S3 pre-signed URL scenario
+      parallelUploads: 1,
+      uploadMultiple: false,
+      addRemoveLinks: true,
+
+      // Content-Type should be included, otherwise you'll get a signature
+      // mismatch error from S3. We're going to update this for each file.
+      header: '',
+
+      // Customize the wording
+      dictDefaultMessage: document.querySelector('#dropzone-message').innerHTML,
+
+      // We're going to process each file manually (see `accept` below)
+      autoProcessQueue: false,
+
+      // Here we request a signed upload URL when a file being accepted
+      accept (file, done) {
+        console.log(file)
+        lambda.getSignedURL(file)
+          .then((url) => {
+            console.log('url', url)
+            file.uploadURL = url
+            done()
+            // Manually process each file
+            setTimeout(() => vm.dropzone.processFile(file))
+          })
+          .catch((err) => {
+            done('Failed to get an S3 signed upload URL', err)
+          })
       }
     }
-  },
-  methods: {
-    sendingEvent(file, xhr, formData) {
-      formData.append('paramName', 'some value or other');
-    },
-    s3UploadError(err) {
-      console.log(err)
-    },
-    s3UploadSuccess(loc) {
-      console.log(loc)
-    },
-    uploadFiles() {
-        this.$refs.myVueDropzone.setAWSSigningURL(this.signurl);
-        this.$refs.myVueDropzone.processQueue();
-    }
-  },
-  components: {
-    vue2Dropzone
+
+    // Instantiate Dropzone
+    this.dropzone = new Dropzone(this.$el, options)
+
+    // Set signed upload URL for each file
+    vm.dropzone.on('processing', (file) => {
+      vm.dropzone.options.url = file.uploadURL
+    })
+
+    vm.dropzone.on('removedfile', function (file) {
+      lambda.deleteObject(file.uploadURL)
+    })
   }
 }
 </script>
-<style>
-input[type=text] {
-  width: 100%;
-  padding: 12px 20px;
-  margin: 8px 0;
-  box-sizing: border-box;
-}
-label {
-  font-weight: bold;
-}
-.note {
-  color: red;
-}
+
+<style lang="stylus">
+primaryBlue = #3498db
+
+form.dropzone
+  transition all 0.2s linear
+  border 2px dashed #ccc
+  width 80%
+  margin auto
+  background-color #fafafa
+  min-height initial
+  &:hover
+    border-color primaryBlue
+    background-color white
+    .dz-message
+      .dropzone-title
+        color primaryBlue
+  .dz-message
+    color #666
+    span
+      line-height 1.8
+      font-size 13px
+      letter-spacing 0.4px
+      span.dropzone-title
+        display block
+        color #888
+        font-size 1.25em
+      span.dropzone-info
+        display block
+        color #a8a8a8
 </style>

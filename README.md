@@ -1,5 +1,8 @@
 # UploadVueS3
 
-src/components/Upload.vue is the component to be used for uploading multiple files to s3.  Grab and drop format.
+Uses dropzone to upload to s3 serverlessly
+Must create config.js file with signedURL
+Can create signedURL using serverless
 
-Still in progress
+npm install
+npm run dev

@@ -1,27 +1,21 @@
 <template>
   <div id="app">
-    <uploads></uploads>
+    <upload></upload>
   </div>
 </template>
 
 <script>
-import Uploads from './components/upload'
+import Upload from './components/Upload'
 
 export default {
   name: 'app',
   components: {
-    Uploads
+    Upload
   }
 }
 </script>
 
-<style>
-#app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
+<style lang="stylus">
+body
+  font-family 'Open Sans', sans-serif
 </style>
