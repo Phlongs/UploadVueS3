@@ -1,6 +1,6 @@
 # UploadVueS3
 
-Uses dropzone.js to upload to aws s3 serverlessly within VUE framework
+Uses dropzone.js to upload/cancel/delete to/from aws s3 serverlessly within VUE framework
 
 Must create config.js file with signedURL
 
