@@ -4,8 +4,8 @@ const AWS = require('aws-sdk')
 const uuidv4 = require('uuid/v4')
 
 AWS.config.update({
-  accessKeyId: config.accessKeyId,
-  secretAccessKey: config.secretAccessKey
+  accessKeyId: config.KEY,
+  secretAccessKey: config.SECRET
 })
 
 export default {
